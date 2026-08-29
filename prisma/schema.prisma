@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  reviews    Review[]
+  carts      Cart[]
+  orders     Order[]
+  assignments ExperimentAssignment[]
+
+  @@map("users")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Category {
+  id       String      @id @default(uuid())
+  name     String
+  slug     String      @unique
+  parentId String?     @map("parent_id")
+  parent   Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[]  @relation("CategoryHierarchy")
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  sku           String   @unique
+  name          String
+  slug          String   @unique
+  description   String? @db.LongText
+  brand         String?
+  categoryId    String   @map("category_id")
+  category      Category @relation(fields: [categoryId], references: [id])
+  price         Float
+  stockQuantity Int      @default(0) @map("stock_quantity")
+  rating        Float    @default(0)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  images     ProductImage[]
+  reviews    Review[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@index([slug])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String  @id @default(uuid())
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String? @map("alt_text")
+  position  Int     @default(0)
+
+  @@map("product_images")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  rating    Int
+  title     String?
+  content   String? @db.LongText
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("reviews")
+}
+
+model Cart {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id])
+  sessionId String?  @map("session_id")
+  status    CartStatus @default(ACTIVE)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items CartItem[]
+
+  @@map("carts")
+}
+
+enum CartStatus {
+  ACTIVE
+  CHECKOUT
+  COMPLETED
+  ABANDONED
+}
+
+model CartItem {
+  id        String  @id @default(uuid())
+  cartId    String  @map("cart_id")
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int     @default(1)
+  unitPrice Float   @map("unit_price")
+
+  @@map("cart_items")
+}
+
+model Order {
+  id             String      @id @default(uuid())
+  userId         String?     @map("user_id")
+  user           User?       @relation(fields: [userId], references: [id])
+  totalAmount    Float       @map("total_amount")
+  status         OrderStatus @default(PENDING)
+  shippingMethod String?     @map("shipping_method")
+  shippingName   String?     @map("shipping_name")
+  shippingAddress String?    @map("shipping_address")
+  shippingCity   String?     @map("shipping_city")
+  shippingZip    String?     @map("shipping_zip")
+  shippingCountry String?    @map("shipping_country")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  items OrderItem[]
+
+  @@index([createdAt])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  DEMO_CONFIRMED
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String  @map("order_id")
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Float   @map("unit_price")
+
+  @@map("order_items")
+}
+
+model AnalyticsEvent {
+  id           String   @id @default(uuid())
+  eventName    String   @map("event_name")
+  userId       String?  @map("user_id")
+  anonymousId  String?  @map("anonymous_id")
+  sessionId    String?  @map("session_id")
+  propertiesJson String? @db.LongText @map("properties_json")
+  occurredAt   DateTime @default(now()) @map("occurred_at")
+
+  @@index([eventName])
+  @@index([occurredAt])
+  @@map("analytics_events")
+}
+
+model Experiment {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  status      ExperimentStatus @default(ACTIVE)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  assignments ExperimentAssignment[]
+
+  @@map("experiments")
+}
+
+enum ExperimentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+model ExperimentAssignment {
+  id           String   @id @default(uuid())
+  experimentId String   @map("experiment_id")
+  experiment   Experiment @relation(fields: [experimentId], references: [id])
+  userId       String?  @map("user_id")
+  user         User?    @relation(fields: [userId], references: [id])
+  anonymousId  String?  @map("anonymous_id")
+  variant      String
+  assignedAt   DateTime @default(now()) @map("assigned_at")
+
+  @@map("experiment_assignments")
+}
