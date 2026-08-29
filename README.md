@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Zoryn Project
 
 > Application e-commerce de produits informatiques — MVP fonctionnel
@@ -283,3 +284,7 @@ npm run build        # Relancer le build
 ## Licence
 
 Projet de demonstration — Usage academique et portfolio
+=======
+# Zoryn-Shop
+E-commerce platform built with Next.js, TypeScript, Prisma, and Tailwind CSS
+>>>>>>> origin/main
